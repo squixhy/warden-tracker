@@ -2,53 +2,26 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const sql = require('mssql');
+const path = require('path'); // Required for file paths
 
-const path = require('path');
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-});
-
-const app = express();
+const app = express(); // Initialize app FIRST before using it
 const port = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
 
 const ALLOWED_LOCATIONS = [
-  'Alwyn Hall',
-  'Beech Glade',
-  'Bowers Building',
-  'Burma Road Student Village',
-  'Centre for Sport',
-  'Chapel',
-  'The Cottage',
-  'Fred Wheeler Building',
-  'Herbert Jarman Building',
-  'Holm Lodge',
-  'Kenneth Kettle Building',
-  'King Alfred Centre',
-  'Martial Rose Library',
-  'Masters Lodge',
-  'Medecroft',
-  'Medecroft Annexe',
-  'Paul Chamberlain Building',
-  'Queen’s Road Student Village',
-  'St Alphege',
-  'St Edburga',
-  'St Elizabeth’s Hall',
-  'St Grimbald’s Court',
-  'St James’ Hall',
-  'St Swithun’s Lodge',
-  'The Stripe',
-  'Business School',
-  'Tom Atkinson Building',
-  'West Downs Centre',
-  'West Downs Student Village',
-  'Winton Building',
-  'Students’ Union'
+  'Alwyn Hall', 'Beech Glade', 'Bowers Building', 'Burma Road Student Village',
+  'Centre for Sport', 'Chapel', 'The Cottage', 'Fred Wheeler Building',
+  'Herbert Jarman Building', 'Holm Lodge', 'Kenneth Kettle Building',
+  'King Alfred Centre', 'Martial Rose Library', 'Masters Lodge',
+  'Medecroft', 'Medecroft Annexe', 'Paul Chamberlain Building',
+  'Queen’s Road Student Village', 'St Alphege', 'St Edburga',
+  'St Elizabeth’s Hall', 'St Grimbald’s Court', 'St James’ Hall',
+  'St Swithun’s Lodge', 'The Stripe', 'Business School',
+  'Tom Atkinson Building', 'West Downs Centre', 'West Downs Student Village',
+  'Winton Building', 'Students’ Union'
 ];
-
 
 let poolPromise;
 async function getPool() {
@@ -63,11 +36,7 @@ async function getPool() {
         encrypt: process.env.DB_ENCRYPT ? process.env.DB_ENCRYPT === 'true' : true,
         trustServerCertificate: process.env.DB_TRUST_CERT === 'true'
       },
-      pool: {
-        max: 10,
-        min: 0,
-        idleTimeoutMillis: 30000
-      }
+      pool: { max: 10, min: 0, idleTimeoutMillis: 30000 }
     });
   }
   return poolPromise;
@@ -83,6 +52,7 @@ function validatePayload(body) {
   }
   return null;
 }
+
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
@@ -124,9 +94,7 @@ app.post('/api/register', async (req, res) => {
   if (validationError) {
     return res.status(400).json({ message: validationError });
   }
-
   const { staffNumber, firstName, surname, location } = req.body;
-
   try {
     const pool = await getPool();
     await pool
@@ -157,7 +125,6 @@ app.put('/api/update', async (req, res) => {
   if (!ALLOWED_LOCATIONS.includes(location)) {
     return res.status(400).json({ message: 'location must be one of the allowed campus locations' });
   }
-
   try {
     const pool = await getPool();
     const result = await pool
@@ -191,11 +158,9 @@ app.put('/api/amend', async (req, res) => {
   if (location && !ALLOWED_LOCATIONS.includes(location)) {
     return res.status(400).json({ message: 'location must be one of the allowed campus locations' });
   }
-
   try {
     const pool = await getPool();
     const request = pool.request().input('staffNumber', sql.NVarChar(50), staffNumber);
-    
     const updates = [];
     if (firstName) {
       request.input('firstName', sql.NVarChar(100), firstName);
@@ -210,11 +175,9 @@ app.put('/api/amend', async (req, res) => {
       updates.push('location = @location');
     }
     updates.push('last_updated = SYSUTCDATETIME()');
-
     const result = await request.query(
       `UPDATE Wardens SET ${updates.join(', ')} WHERE staff_number = @staffNumber`
     );
-    
     if (result.rowsAffected[0] === 0) {
       return res.status(404).json({ message: 'Warden not found' });
     }
@@ -227,7 +190,6 @@ app.put('/api/amend', async (req, res) => {
 
 app.delete('/api/checkout/:id', async (req, res) => {
   const { id } = req.params;
-
   try {
     const pool = await getPool();
     const result = await pool
@@ -242,6 +204,12 @@ app.delete('/api/checkout/:id', async (req, res) => {
     console.error('DELETE /api/checkout error', err);
     res.status(500).json({ message: 'Failed to clock off warden' });
   }
+});
+
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
 app.listen(port, () => {
